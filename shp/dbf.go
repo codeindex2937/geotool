@@ -1,4 +1,4 @@
-package geotool
+package shp
 
 // reference implementation:
 //     http://dbf.berlios.de/
@@ -22,7 +22,7 @@ type Reader struct {
 	r                io.ReadSeeker
 	year, month, day int
 	Length           int // number of records
-	fields           []Field
+	fields           []DbfField
 	headerlen        uint16 // in bytes
 	recordlen        uint16 // length of each record, in bytes
 	sync.Mutex
@@ -50,13 +50,13 @@ func NewDbfReader(r io.ReadSeeker) (*Reader, error) {
 		return nil, fmt.Errorf("unexepected file version: %d\n", h.Version)
 	}
 
-	var fields []Field
+	var fields []DbfField
 	if _, err := r.Seek(0x20, 0); err != nil {
 		return nil, err
 	}
 	var offset uint16
 	for offset = 0x20; offset < h.Headerlen-1; offset += 32 {
-		f := Field{}
+		f := DbfField{}
 		binary.Read(r, binary.LittleEndian, &f)
 		if err = f.validate(); err != nil {
 			return nil, err
@@ -91,7 +91,7 @@ func (r *Reader) FieldNames() (names []string) {
 	return
 }
 
-func (f *Field) validate() error {
+func (f *DbfField) validate() error {
 	switch f.Type {
 	case 'C', 'N', 'F':
 		return nil
@@ -99,7 +99,7 @@ func (f *Field) validate() error {
 	return fmt.Errorf("Sorry, dbf library doesn't recognize field type '%c'", f.Type)
 }
 
-type Field struct {
+type DbfField struct {
 	Name          [11]byte // 0x0 terminated
 	Type          byte
 	Offset        uint32

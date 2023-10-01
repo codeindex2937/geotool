@@ -1,0 +1,6 @@
+github.com/codeindex2937/zipper v0.0.0-20231001081248-3d7d5b53f4b8 h1:19KsoXN5HbyoTtZlQYUinHxxoA+MUMCQh30RS2wmEj0=
+github.com/codeindex2937/zipper v0.0.0-20231001081248-3d7d5b53f4b8/go.mod h1:XAiYkgP/dEOUplefCVNarl2iPG6VA2B/znMU7nVg2LA=
+github.com/kdungs/zip v0.0.0-20201102105150-f64161d39db4 h1:z2CB+XsH+HQ/6f07X/JiQuRKzB56qCT9bbsDJr/bnQE=
+github.com/kdungs/zip v0.0.0-20201102105150-f64161d39db4/go.mod h1:VnZmhrY8ozhjO8EgNh0G1e5c5I8AvfxZb6uWLlC6UTk=
+golang.org/x/crypto v0.13.0 h1:mvySKfSWJ+UKUii46M40LOvyWfN0s2U+46/jDd0e6Ck=
+golang.org/x/crypto v0.13.0/go.mod h1:y6Z2r+Rw4iayiXXAIxJIDAJ1zMW4yaTpebo8fPOliYc=
