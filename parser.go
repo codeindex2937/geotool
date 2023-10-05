@@ -9,23 +9,23 @@ import (
 
 	"github.com/codeindex2937/geotool/shp"
 	"github.com/codeindex2937/zipper"
+	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/planar"
 )
 
-type Area struct {
-	Points []WGS84
-	Bound  shp.Box
+type CentroidPoint struct {
+	*geojson.Feature
 }
 
-type AreaInfo interface {
-	SetAreas([]Area)
-	GetAreas() []Area
-	Apply(data map[string]interface{})
+func (cp CentroidPoint) Point() orb.Point {
+	// this is where you would decide how to define
+	// the representative point of the feature.
+	c, _ := planar.CentroidArea(cp.Geometry)
+	return c
 }
 
-func ReadZip[T any, U interface {
-	AreaInfo
-	*T
-}](source string, translator func(x, y float64) (float64, float64)) ([]U, error) {
+func ReadZip(source string, translator func(x, y float64) (float64, float64)) ([]*geojson.Feature, error) {
 	ext := filepath.Ext(source)
 	filename := strings.TrimSuffix(source, ext)
 
@@ -56,29 +56,33 @@ func ReadZip[T any, U interface {
 		return nil, err
 	}
 
-	dbfInfos, err := ReadDbf[T, U](bytes.NewReader(dbfBuf.Bytes()))
+	records, err := ReadDbf(bytes.NewReader(dbfBuf.Bytes()))
 	if err != nil {
 		return nil, err
 	}
 
-	areaGroups := ReadShp[T](bytes.NewReader(shpBuf.Bytes()), int64(shpBuf.Len()), translator)
+	geometries := ReadShp(bytes.NewReader(shpBuf.Bytes()), int64(shpBuf.Len()), translator)
 
-	for i := range dbfInfos {
-		dbfInfos[i].SetAreas(areaGroups[i])
+	featuries := []*geojson.Feature{}
+	for i, geometry := range geometries {
+		f := geojson.NewFeature(geometry)
+		f.Properties = records[i]
+		featuries = append(featuries, f)
 	}
 
-	return dbfInfos, nil
+	return featuries, nil
 }
 
-func ReadShp[T any](r io.ReadSeeker, size int64, translator func(x, y float64) (float64, float64)) [][]Area {
+func ReadShp(r io.ReadSeeker, size int64, translator func(x, y float64) (float64, float64)) []orb.Geometry {
 	shpReader := shp.NewReader(r, size)
-	areaGroups := [][]Area{}
+
+	geometries := []orb.Geometry{}
 
 	for shpReader.Next() {
 		_, p := shpReader.Shape()
 
 		poly := p.(*shp.Polygon)
-		areas := []Area{}
+		polygon := orb.Polygon{}
 		for i, offset := range poly.Parts {
 			var end int32
 			if i == int(poly.NumParts)-1 {
@@ -87,40 +91,34 @@ func ReadShp[T any](r io.ReadSeeker, size int64, translator func(x, y float64) (
 				end = poly.Parts[i+1]
 			}
 
-			points := []WGS84{}
+			ring := orb.Ring{}
 			for _, p := range poly.Points[offset:end] {
 				x, y := translator(p.X, p.Y)
-				points = append(points, WGS84{X: x, Y: y})
+				ring = append(ring, orb.Point{x, y})
 			}
-			areas = append(areas, Area{Bound: shp.BBoxFromPoints(poly.Points[offset:end]), Points: points})
-		}
 
-		areaGroups = append(areaGroups, areas)
+			polygon = append(polygon, ring)
+		}
+		geometries = append(geometries, orb.MultiPolygon{polygon})
 	}
 
-	return areaGroups
+	return geometries
 }
 
-func ReadDbf[T any, U interface {
-	AreaInfo
-	*T
-}](src io.ReadSeeker) ([]U, error) {
+func ReadDbf(src io.ReadSeeker) ([]map[string]interface{}, error) {
 	dbfReader, err := shp.NewDbfReader(src)
 	if err != nil {
 		return nil, err
 	}
 
-	infos := []U{}
+	infos := []map[string]interface{}{}
 	for i := 0; i < dbfReader.Length; i++ {
 		entry, err := dbfReader.Read(i)
 		if err != nil {
 			return nil, err
 		}
 
-		info := U(new(T))
-		info.Apply(entry)
-
-		infos = append(infos, info)
+		infos = append(infos, entry)
 	}
 
 	return infos, nil
