@@ -92,7 +92,7 @@ func ReadShp[T any](r io.ReadSeeker, size int64, translator func(x, y float64) (
 				x, y := translator(p.X, p.Y)
 				points = append(points, WGS84{X: x, Y: y})
 			}
-			areas = append(areas, Area{Bound: poly.BBox(), Points: points})
+			areas = append(areas, Area{Bound: shp.BBoxFromPoints(poly.Points[offset:end]), Points: points})
 		}
 
 		areaGroups = append(areaGroups, areas)
